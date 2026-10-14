@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -83,6 +84,7 @@ func main() {
 	mux.Handle("/bench", handle(benchHandler, verbose))
 	mux.Handle("/api", handle(apiHandler, verbose))
 	mux.Handle("/health", handle(healthHandler, verbose))
+	mux.Handle("/ready", handle(readyHandler, verbose))
 	mux.Handle("/openapi.yaml", handle(openAPIHandler, verbose))
 	mux.Handle("/", handle(whoamiHandler, verbose))
 
@@ -340,6 +342,28 @@ func healthHandler(w http.ResponseWriter, req *http.Request) {
 		defer mutexHealthState.RUnlock()
 		w.WriteHeader(currentHealthState.StatusCode)
 	}
+}
+
+// readyFailureProbability is the chance that this instance decides, once at
+// startup, that it will never pass a readiness check.
+const readyFailureProbability = 0.2
+
+var isReady = true
+
+func init() {
+	if rand.Float64() < readyFailureProbability {
+		isReady = false
+		log.Println("readiness check will report not ready for this instance")
+	}
+}
+
+func readyHandler(w http.ResponseWriter, _ *http.Request) {
+	if !isReady {
+		http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func getEnv(key, fallback string) string {

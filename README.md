@@ -45,6 +45,10 @@ Heath check.
 - `GET`, `HEAD`, ...: returns a response with the status code defined by the `POST`
 - `POST`: changes the status code of the `GET` (`HEAD`, ...) response.
 
+#### `/ready`
+
+Readiness probe. Returns `200` if the instance is ready to serve traffic, `503` otherwise.
+
 ### Flags
 
 | Flag      | Env var              | Description                             |

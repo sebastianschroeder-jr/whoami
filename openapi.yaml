@@ -25,6 +25,8 @@ tags:
     description: Endpoints useful for benchmarking and load testing.
   - name: health
     description: Health check control.
+  - name: readiness
+    description: Readiness probe.
 paths:
   /:
     get:
@@ -177,6 +179,18 @@ paths:
             text/plain:
               schema:
                 type: string
+  /ready:
+    get:
+      operationId: getReady
+      tags:
+        - readiness
+      summary: Readiness probe
+      description: Returns 200 if the instance is ready to serve traffic, 503 otherwise.
+      responses:
+        '200':
+          description: The instance is ready to serve traffic.
+        '503':
+          description: The instance is not ready to serve traffic.
 components:
   parameters:
     Wait:
