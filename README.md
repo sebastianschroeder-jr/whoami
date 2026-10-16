@@ -59,6 +59,7 @@ Readiness probe. Returns `200` if the instance is ready to serve traffic, `503` 
 | `port`    | `WHOAMI_PORT_NUMBER` | Give me a port number. (default: `80`)  |
 | `name`    | `WHOAMI_NAME`        | Give me a name.                         |
 | `verbose` |                      | Enable verbose logging.                 |
+| `hsts`    | `WHOAMI_HSTS`        | Set the `Strict-Transport-Security` header on responses received over HTTPS (checked via TLS or the `X-Forwarded-Proto` header, for use behind a TLS-terminating proxy/load balancer). |
 
 ## Examples
 

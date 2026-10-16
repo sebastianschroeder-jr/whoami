@@ -51,6 +51,7 @@ var (
 	port    string
 	name    string
 	verbose bool
+	hsts    bool
 )
 
 func init() {
@@ -60,7 +61,11 @@ func init() {
 	flag.StringVar(&ca, "cacert", "", "give me a CA chain, enforces mutual TLS")
 	flag.StringVar(&port, "port", getEnv("WHOAMI_PORT_NUMBER", "80"), "give me a port number")
 	flag.StringVar(&name, "name", os.Getenv("WHOAMI_NAME"), "give me a name")
+	flag.BoolVar(&hsts, "hsts", getEnvBool("WHOAMI_HSTS", false), "set the Strict-Transport-Security header on responses received over HTTPS (checked via TLS or the X-Forwarded-Proto header, for use behind a TLS-terminating proxy/load balancer)")
 }
+
+// hstsHeaderValue is a conventional 2-year max-age; see https://hstspreload.org.
+const hstsHeaderValue = "max-age=63072000; includeSubDomains"
 
 // Data whoami information.
 type Data struct {
@@ -92,7 +97,7 @@ func main() {
 	grpcWhoami.RegisterWhoamiServer(serverGRPC, whoamiServer{})
 	mux.Handle("/whoami.Whoami/", serverGRPC)
 
-	h := handle(mux.ServeHTTP, verbose)
+	h := withHSTS(handle(mux.ServeHTTP, verbose), hsts)
 
 	if cert == "" || key == "" {
 		log.Printf("Starting up on port %s", port)
@@ -154,6 +159,20 @@ func handle(next http.HandlerFunc, verbose bool) http.Handler {
 
 		// <remote_IP_address> - [<timestamp>] "<request_method> <request_path> <request_protocol>" -
 		log.Printf("%s - - [%s] \"%s %s %s\" - -", r.RemoteAddr, time.Now().Format("02/Jan/2006:15:04:05 -0700"), r.Method, r.URL.Path, r.Proto)
+	})
+}
+
+func withHSTS(next http.Handler, enabled bool) http.Handler {
+	if !enabled {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			w.Header().Set("Strict-Transport-Security", hstsHeaderValue)
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -369,6 +388,14 @@ func readyHandler(w http.ResponseWriter, _ *http.Request) {
 func getEnv(key, fallback string) string {
 	value := os.Getenv(key)
 	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	value, err := strconv.ParseBool(os.Getenv(key))
+	if err != nil {
 		return fallback
 	}
 	return value
